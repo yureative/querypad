@@ -14,13 +14,20 @@
   <script>
     function deleteHistory(id) {
       jsRouter.controllers.Application.removeQueryHistory(id).ajax({
-        complete: function() { window.location = '/' }
+        complete: function() { window.location = '@routes.Application.index(None)' }
       });
     }
   </script>
 }{
-  <div class="span9">
+  <div class="span8">
     <section id="querypad">
+    @queryForm.globalError.map { err =>
+      <div class="alert alert-block alert-error">
+          <button type="button" class="close" data-dismiss="alert">&times;</button>
+          <h4>SQL エラー</h4>
+          @err.message
+      </div>
+    }
       <div>
         @helper.form(action = routes.Application.executeQuery) {
           <fieldset>
@@ -63,7 +70,7 @@
     }
     </section>
   </div><!--/span-->
-  <div class="span3">
+  <div class="span4">
     <div class="well sidebar-nav">
       <ul class="nav nav-list">
         <li class="nav-header">SQL 履歴</li>

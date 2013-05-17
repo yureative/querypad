@@ -5,6 +5,7 @@ import play.api._
 import play.api.mvc._
 import play.api.data._
 import play.api.data.Forms._
+import java.sql.SQLException
 import models.DBQuery
 
 object Application extends Controller {
@@ -30,13 +31,20 @@ object Application extends Controller {
     queryForm.bindFromRequest.fold(
       errors => BadRequest(views.html.index(errors, DBQuery.listHistory(30))),
       query  => {
-        val queryResult = DBQuery.execute(query)
-        if (query.save) {
-          DBQuery.addHistory(query)
+        try {
+          val queryResult = DBQuery.execute(query)
+          if (query.save) {
+            DBQuery.addHistory(query)
+          }
+          Ok(views.html.index(queryForm.fill(query),
+            DBQuery.listHistory(30),
+            Some(queryResult)))
+        } catch {
+          case e: SQLException => {
+            BadRequest(views.html.index(
+              queryForm.fill(query).withGlobalError(e.getMessage), DBQuery.listHistory(30)))
+          }
         }
-        Ok(views.html.index(queryForm.fill(query),
-          DBQuery.listHistory(30),
-          Some(queryResult)))
       }
     )
   }
