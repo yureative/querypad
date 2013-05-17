@@ -3,7 +3,13 @@
 # ~~~~
 
 # Home page
-GET     /                           controllers.Application.index
+GET     /                           controllers.Application.index(useHistory: Option[Int])
+POST    /query                      controllers.Application.executeQuery
+GET     /query/history              controllers.Application.listQueryHistory(count: Int ?= 30)
+DELETE  /query/history/:id          controllers.Application.removeQueryHistory(id: Int)
+
+GET     /assets/javascripts/routes  controllers.Application.javascriptRoutes
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
+

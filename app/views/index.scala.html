@@ -1,7 +1,89 @@
-@(message: String)
+@(queryForm: Form[DBQuery], histories: List[DBQueryHistory], queryResult: Option[DBQueryResult]=None)
 
-@main("Welcome to Play 2.1") {
+@import helper._
+@import helper.twitterBootstrap._
+
+@main {
+  <style>
+    #sql {
+      height: 200px;
+      font-size: 20px;
+      font-family: monospace;
+    }
+  </style>
+  <script>
+    function deleteHistory(id) {
+      jsRouter.controllers.Application.removeQueryHistory(id).ajax({
+        complete: function() { window.location = '/' }
+      });
+    }
+  </script>
+}{
+  <div class="span9">
+    <section id="querypad">
+      <div>
+        @helper.form(action = routes.Application.executeQuery) {
+          <fieldset>
+            <legend>SQL入力欄</legend>
+            @textarea(queryForm("sql"), 'class -> "span12", '_label -> "", '_showConstraints -> false)
+            <div class="row-fluid">
+              <div class="span2">
+                <button type="submit" class="btn btn-primary">実行</button>
+              </div>
+              <div class="span10">
+                <label class="checkbox">履歴に保存
+                  <input type="checkbox" id="save" name="save" value="true"/>
+                </label>
+                <input class="span6" type="text" id="name" name="name" placeholder="履歴の名前"/>
+              </div>
+            </div>
+          </fieldset>
+        }
+      </div>
+    @queryResult.map { qr =>
+      <h2>実行結果</h2>
+      <table class="table table-bordered table-condensed table-striped">
+        <thead>
+          <tr>
+          @qr.columns.map { column =>
+            <th>@column</th>
+          }
+          </tr>
+        </thead>
+        <tbody>
+        @qr.rows.map { row =>
+          <tr>
+          @row.map { value =>
+            <td>@value</td>
+          }
+          </tr>
+        }
+        </tbody>
+      </table>
+    }
+    </section>
+  </div><!--/span-->
+  <div class="span3">
+    <div class="well sidebar-nav">
+      <ul class="nav nav-list">
+        <li class="nav-header">SQL 履歴</li>
+      @histories.map { history =>
+        <li>
+        <button class="close delete" type="button"
+                onclick="if (confirm('削除しますか?')) { deleteHistory(@history.id.getOrElse(0)) } ">×</button>
+          <a rel="tooltip" href="@routes.Application.index(history.id.toOption)"
+               data-placement="left" data-original-title="@history.query.sql"
+               >@history.updatedAt.toString("M/dd HH:mm") @history.name</a>
+        </li>
+      }
+      </ul>
+    </div><!--/.well -->
+  </div><!--/span-->
     
-    @play20.welcome(message)
-    
+} {
+  <script>
+    $(function(){
+      $('a[rel=tooltip]').tooltip();
+    });
+  </script>
 }
