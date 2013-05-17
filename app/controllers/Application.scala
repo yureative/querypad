@@ -6,6 +6,7 @@ import play.api.mvc._
 import play.api.data._
 import play.api.data.Forms._
 import java.sql.SQLException
+import org.joda.time.DateTime
 import models.DBQuery
 
 object Application extends Controller {
@@ -31,8 +32,11 @@ object Application extends Controller {
     queryForm.bindFromRequest.fold(
       errors => BadRequest(views.html.index(errors, DBQuery.listHistory(30))),
       query  => {
+        val formattedSQL = query.sql.replace(
+          "{{today}}", new DateTime().toString("yyyyMMdd"))
+
         try {
-          val queryResult = DBQuery.execute(query)
+          val queryResult = DBQuery.execute(query.copy(sql=formattedSQL))
           if (query.save) {
             DBQuery.addHistory(query)
           }
