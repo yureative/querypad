@@ -49,24 +49,28 @@
       </div>
     @queryResult.map { qr =>
       <h2>実行結果</h2>
-      <table class="table table-bordered table-condensed table-striped">
-        <thead>
-          <tr>
-          @qr.columns.map { column =>
-            <th>@column</th>
+      @if(qr.rows.length == 0) {
+        <p class="alert">クエリの実行には成功しましたが。結果が 0 件です。</p>
+      } else {
+        <table class="table table-bordered table-condensed table-striped">
+          <thead>
+            <tr>
+            @qr.columns.map { column =>
+              <th>@column</th>
+            }
+            </tr>
+          </thead>
+          <tbody>
+          @qr.rows.map { row =>
+            <tr>
+            @row.map { value =>
+              <td>@value</td>
+            }
+            </tr>
           }
-          </tr>
-        </thead>
-        <tbody>
-        @qr.rows.map { row =>
-          <tr>
-          @row.map { value =>
-            <td>@value</td>
-          }
-          </tr>
-        }
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      }
     }
     </section>
   </div><!--/span-->

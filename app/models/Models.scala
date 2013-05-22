@@ -17,10 +17,12 @@ object DBQuery {
   def execute(query: DBQuery): DBQueryResult = {
     DB.withConnection("ext") { implicit conn =>
       val rows = SQL(query.sql)()
-      val columns = rows.head.metaData.ms map { mdItem =>
-        mdItem.column.alias getOrElse mdItem.column.qualified
-      }
-      DBQueryResult(columns, rows.map(_.asList).toList)
+      rows.headOption map { head =>
+        val columns = head.metaData.ms map { mdItem =>
+          mdItem.column.alias getOrElse mdItem.column.qualified
+        }
+        DBQueryResult(columns, rows.map(_.asList).toList)
+      } getOrElse DBQueryResult(Nil, Nil)
     }
   }
 
