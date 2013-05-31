@@ -8,6 +8,11 @@ import play.api.data.Forms._
 import java.sql.SQLException
 import org.joda.time.DateTime
 import models.DBQuery
+import java.util.Date
+import java.io.File
+import java.io.BufferedWriter
+import java.io.FileWriter
+import utils._
 
 object Application extends Controller {
 
@@ -28,7 +33,27 @@ object Application extends Controller {
     Ok(views.html.index(qform, DBQuery.listHistory(30)))
   }
 
-  def executeQuery = Action { implicit request =>
+  def createQueryResultCSV(columns: Seq[String], rows: Stream[Seq[Any]]): File = {
+    val csv = File.createTempFile("querypad_", ".csv")
+    try {
+      using(new BufferedWriter(new FileWriter(csv))) { writer =>
+        writer.write(columns mkString ",")
+        writer.newLine()
+        rows foreach { row =>
+          writer.write(row mkString ",")
+          writer.newLine()
+        }
+      }
+      csv
+    } catch {
+      case e: Throwable => {
+        deleteQuietly(csv)
+        throw e
+      }
+    }
+  }
+
+  def executeQuery = Action(parse.urlFormEncoded) { implicit request =>
     queryForm.bindFromRequest.fold(
       errors => BadRequest(views.html.index(errors, DBQuery.listHistory(30))),
       query  => {
@@ -36,13 +61,25 @@ object Application extends Controller {
           "{{today}}", new DateTime().toString("yyyyMMdd"))
 
         try {
-          val queryResult = DBQuery.execute(query.copy(sql=formattedSQL))
-          if (query.save) {
-            DBQuery.addHistory(query)
+          if (request.body.contains("submit-csv")) {
+            DBQuery.executeWithHandler(query.copy(sql=formattedSQL)) { (columns, rows) =>
+              val csv = createQueryResultCSV(columns, rows)
+              try {
+                Ok.sendFile(csv, fileName =
+                  f => "queryresult.%d.csv".format(new Date().getTime / 1000))
+              } finally {
+                deleteQuietly(csv)
+              }
+            }
+          } else {
+            val queryResult = DBQuery.execute(query.copy(sql=formattedSQL))
+            if (query.save) {
+              DBQuery.addHistory(query)
+            }
+            Ok(views.html.index(queryForm.fill(query),
+              DBQuery.listHistory(30),
+              Some(queryResult)))
           }
-          Ok(views.html.index(queryForm.fill(query),
-            DBQuery.listHistory(30),
-            Some(queryResult)))
         } catch {
           case e: SQLException => {
             BadRequest(views.html.index(

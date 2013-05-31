@@ -6,6 +6,12 @@ import play.api.db._
 import play.api.Play.current
 import org.joda.time.DateTime
 import java.util.Date
+import java.sql.Connection
+import java.io.File
+
+import play.api._
+import play.api.mvc._
+import play.api.mvc.Results._
 
 case class DBQuery(sql: String, name: String = "", save: Boolean = false)
 case class DBQueryResult(columns: List[String], rows: List[List[Any]])
@@ -14,15 +20,30 @@ case class DBQueryHistory(id: Pk[Int], name: String, query: DBQuery, updatedAt: 
 object DBQuery {
   val QueryHistoryTable = "query_history"
 
-  def execute(query: DBQuery): DBQueryResult = {
+  private def execute(query: DBQuery)(implicit conn: Connection):
+      (List[String], Stream[List[Any]]) = {
+    val rs = SQL(query.sql).resultSet()
+    val columns = Sql.metaData(rs).ms map { mdItem =>
+      mdItem.column.alias getOrElse mdItem.column.qualified
+    }
+
+    (columns, Sql.resultSetToStream(rs).map(_.data))
+  }
+
+  def execute(query: DBQuery, maxRows: Int = 1000): DBQueryResult = {
     DB.withConnection("ext") { implicit conn =>
-      val rows = SQL(query.sql)()
-      rows.headOption map { head =>
-        val columns = head.metaData.ms map { mdItem =>
-          mdItem.column.alias getOrElse mdItem.column.qualified
-        }
-        DBQueryResult(columns, rows.map(_.asList).toList)
-      } getOrElse DBQueryResult(Nil, Nil)
+      execute(query) match {
+        case (columns, rows) => DBQueryResult(columns, rows.take(maxRows).toList)
+      }
+    }
+  }
+
+  def executeWithHandler[T](query: DBQuery)
+      (handler: (List[String], Stream[List[Any]]) => T): T = {
+    DB.withConnection("ext") { implicit conn =>
+      execute(query) match {
+        case (columns, rows) => handler(columns, rows)
+      }
     }
   }
 

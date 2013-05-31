@@ -10,6 +10,9 @@
       font-size: 18px;
       font-family: monospace;
     }
+    .btn-primary {
+      margin-right: 20px;
+    }
   </style>
   <script>
     function deleteHistory(id) {
@@ -34,10 +37,11 @@
             <legend>SQL入力欄</legend>
             @textarea(queryForm("sql"), 'class -> "span12", '_label -> "", '_showConstraints -> false)
             <div class="row-fluid">
-              <div class="span2">
+              <div class="span4">
                 <button type="submit" class="btn btn-primary">実行</button>
+                <button type="submit" class="btn csv-download" name="submit-csv">CSV ダウンロード</button>
               </div>
-              <div class="span10">
+              <div class="span8">
                 <label class="checkbox">履歴に保存
                   <input type="checkbox" id="save" name="save" value="true"/>
                 </label>
