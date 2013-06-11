@@ -79,7 +79,7 @@
         <li>
           <div class="btn-group" style="float: right;">
             <button class="btn btn-mini"
-                    onclick="showUpdateHistoryModal(@history.id.getOrElse(0), '@history.name')"
+                    onclick="showUpdateHistoryModal(@history.id.getOrElse(0))"
                     ><i class="icon-edit"></i></button>
             <button class="btn btn-mini"
                     onclick="if (confirm('削除しますか?')) { deleteHistory(@history.id.getOrElse(0)) }"
