@@ -1,6 +1,7 @@
 package models
 
 import anorm._
+import anorm.SqlParser._
 import play.api.Logger
 import play.api.db._
 import play.api.Play.current
@@ -20,6 +21,16 @@ case class DBQueryHistory(id: Pk[Int], name: String, query: DBQuery, updatedAt: 
 object DBQuery {
   val QueryHistoryTable = "query_history"
 
+  val historyRowParser = {
+    get[Pk[Int]](s"${QueryHistoryTable}.id") ~
+    get[String](s"${QueryHistoryTable}.name") ~
+    get[String](s"${QueryHistoryTable}.sql") ~
+    get[Date](s"${QueryHistoryTable}.updated_at") map {
+      case id~name~sql~updated_at =>
+        DBQueryHistory(id, name, DBQuery(sql), new DateTime(updated_at))
+    }     
+  }
+  
   private def execute(query: DBQuery)(implicit conn: Connection):
       (List[String], Stream[List[Any]]) = {
     val rs = SQL(query.sql).resultSet()
@@ -53,15 +64,20 @@ object DBQuery {
         nextval('query_history_seq'), {name}, {sql}, current_timestamp)""")
         .on("name" -> query.name, "sql" -> query.sql).executeInsert()
     }
+  
+  def findHistory(historyID: Int): Option[DBQueryHistory] = {
+    DB.withConnection { implicit conn =>
+      SQL(s"""SELECT * FROM $QueryHistoryTable
+        WHERE id = {id}""").on('id -> historyID)
+        .singleOpt(historyRowParser)
+    }
+  }
 
   def listHistory(limit: Int): List[DBQueryHistory] = {
     DB.withConnection { implicit conn =>
       SQL(s"""SELECT * FROM $QueryHistoryTable
         ORDER BY updated_at DESC LIMIT {limit}""")
-          .on("limit" -> limit)() map { row =>
-            DBQueryHistory(row[Pk[Int]]("id"), row[String]("name"),
-              DBQuery(row[String]("sql")), new DateTime(row[Date]("updated_at")))
-          } toList
+          .on("limit" -> limit).list(historyRowParser).toList
     }
   }
 

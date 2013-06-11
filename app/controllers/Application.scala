@@ -15,7 +15,6 @@ import java.io.FileWriter
 import utils._
 
 object Application extends Controller {
-
   val queryForm: Form[DBQuery] = Form(
     mapping(
       "sql"  -> nonEmptyText,
@@ -25,7 +24,7 @@ object Application extends Controller {
 
   def index(useHistory: Option[Int]) = Action {
     val qform = useHistory map { id =>
-      DBQuery.listHistory(30).find(_.id.get == id) map { h =>
+      DBQuery.findHistory(id) map { h =>
         queryForm.fill(h.query)
       } getOrElse queryForm
     } getOrElse queryForm
@@ -62,14 +61,9 @@ object Application extends Controller {
 
         try {
           if (request.body.contains("submit-csv")) {
-            DBQuery.executeWithHandler(query.copy(sql=formattedSQL)) { (columns, rows) =>
-              val csv = createQueryResultCSV(columns, rows)
-              try {
-                Ok.sendFile(csv, fileName =
-                  f => "queryresult.%d.csv".format(new Date().getTime / 1000))
-              } finally {
-                deleteQuietly(csv)
-              }
+            executeQueryAsCSV(query.copy(sql=formattedSQL)) { csv =>
+              Ok.sendFile(csv, fileName =
+                f => "queryresult.%d.csv".format(new Date().getTime / 1000))
             }
           } else {
             val queryResult = DBQuery.execute(query.copy(sql=formattedSQL))
@@ -88,6 +82,30 @@ object Application extends Controller {
         }
       }
     )
+  }
+  
+  def executeQueryAsCSV[T](query: DBQuery)(csvHandler: File => T): T =
+    DBQuery.executeWithHandler(query) { (columns, rows) =>
+      val csv = createQueryResultCSV(columns, rows)
+      try {
+        csvHandler(csv)
+      } finally {
+        deleteQuietly(csv)
+      }
+    }
+  
+  def executeHistory(id: Int) = Action { implicit request =>
+    request.headers.get("Accept") map {
+      _.toLowerCase match {
+        case "text/csv" => DBQuery.findHistory(id) map { history =>
+          executeQueryAsCSV(history.query) { csv =>
+            Ok.sendFile(csv, fileName =
+              f => s"${history.name}.%d.csv".format(new Date().getTime / 1000))
+          }
+        } getOrElse NotFound("history not found.")
+        case _ => BadRequest("Unsupported accept format.")
+      }
+    } getOrElse BadRequest("Accept header required.")
   }
 
   def removeQueryHistory(id: Int) = Action {
