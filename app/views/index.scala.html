@@ -128,7 +128,7 @@
     });
     function showUpdateHistoryModal(id) {
       var onSuccess = function(name, sql) {
-        $('#updateHistoryFormArea .modal-header h3').text('履歴を更新します');
+        $('#updateHistoryFormArea .modal-header h3').text('SQL 履歴を更新します');
         $('#updateHistoryForm input[name=id]').val(id);
         $('#updateHistoryForm input[name=name]').val(name);
         $('#updateHistoryForm textarea[name=sql]').val(sql);
