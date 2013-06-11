@@ -108,17 +108,17 @@ object Application extends Controller {
     }
   
   def executeHistory(id: Int) = Action { implicit request =>
-    request.headers.get("Accept") map {
-      _.toLowerCase match {
-        case "text/csv" => DBQuery.findHistory(id) map { history =>
+    val csvAccept = Accepting("text/csv") 
+    request match {
+      case csvAccept() => 
+        DBQuery.findHistory(id) map { history =>
           executeQueryAsCSV(history.query) { csv =>
             Ok.sendFile(csv, fileName =
               f => s"${history.name}.%d.csv".format(new Date().getTime / 1000))
           }
         } getOrElse NotFound("history not found.")
-        case _ => BadRequest("unsupported accept format.")
-      }
-    } getOrElse BadRequest("Accept header required.")
+      case _ => BadRequest("unsupported accepts.")
+    }
   }
   
   def showQueryHistory(id: Int) = Action { request =>
