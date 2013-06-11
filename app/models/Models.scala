@@ -65,6 +65,21 @@ object DBQuery {
         .on("name" -> query.name, "sql" -> query.sql).executeInsert()
     }
   
+  def updateHistory(history: DBQueryHistory) {
+    DB.withConnection { implicit conn =>
+      SQL(s"""
+        UPDATE $QueryHistoryTable SET
+            name       = {name},
+            sql        = {sql},
+            updated_at = current_timestamp
+          WHERE id = {id}""")
+        .on(
+          'name -> history.name,
+          'sql  -> history.query.sql,
+          'id   -> history.id).executeUpdate()
+    }
+  }
+
   def findHistory(historyID: Int): Option[DBQueryHistory] = {
     DB.withConnection { implicit conn =>
       SQL(s"""SELECT * FROM $QueryHistoryTable

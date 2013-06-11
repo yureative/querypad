@@ -5,9 +5,11 @@ import play.api._
 import play.api.mvc._
 import play.api.data._
 import play.api.data.Forms._
+import play.api.libs.json._
 import java.sql.SQLException
 import org.joda.time.DateTime
 import models.DBQuery
+import models.DBQueryHistory
 import java.util.Date
 import java.io.File
 import java.io.BufferedWriter
@@ -21,6 +23,17 @@ object Application extends Controller {
       "name" -> text,
       "save" -> boolean
     )(DBQuery.apply)(DBQuery.unapply))
+  
+  val updateHistoryForm: Form[DBQueryHistory] = Form(
+    mapping(
+      "name" -> nonEmptyText(maxLength=30),
+      "sql"  -> nonEmptyText
+    ) { (name, sql) =>
+      DBQueryHistory(NotAssigned, name, DBQuery(sql), new DateTime)
+    } { history =>
+      Some(history.name, history.query.sql)
+    }
+  )
 
   def index(useHistory: Option[Int]) = Action {
     val qform = useHistory map { id =>
@@ -103,9 +116,37 @@ object Application extends Controller {
               f => s"${history.name}.%d.csv".format(new Date().getTime / 1000))
           }
         } getOrElse NotFound("history not found.")
-        case _ => BadRequest("Unsupported accept format.")
+        case _ => BadRequest("unsupported accept format.")
       }
     } getOrElse BadRequest("Accept header required.")
+  }
+  
+  def showQueryHistory(id: Int) = Action { request =>
+    import Json.toJson
+    request match {
+      case Accepts.Json() =>
+        DBQuery.findHistory(id) map { history =>
+          Ok(toJson(Map(
+            "id"   -> toJson(history.id.get),
+            "name" -> toJson(history.name),
+	        "sql"  -> toJson(history.query.sql))))
+	    } getOrElse NotFound("history not found.")
+	  case _ => BadRequest(s"unsupported accepts.")
+    } 
+  }
+  
+  def updateQueryHistory(id: Int) = Action { implicit request =>
+    Logger.debug("hoge")
+    updateHistoryForm.bindFromRequest.fold(
+      errors => {
+        Logger.warn(errors.toString)
+        BadRequest("Invalid value.")
+      },
+      history => {       
+        DBQuery.updateHistory(history.copy(id=Id(id)))
+        Ok
+      }
+    )
   }
 
   def removeQueryHistory(id: Int) = Action {
@@ -119,6 +160,8 @@ object Application extends Controller {
 
   def javascriptRoutes = Action { implicit request =>
     Ok(Routes.javascriptRouter("jsRouter", Some("jQuery.ajax"))(
+      routes.javascript.Application.showQueryHistory,
+      routes.javascript.Application.updateQueryHistory,
       routes.javascript.Application.removeQueryHistory)).as("text/javascript")
   }
 

@@ -6,6 +6,8 @@
 GET     /                           controllers.Application.index(useHistory: Option[Int])
 POST    /query                      controllers.Application.executeQuery
 GET     /query/history              controllers.Application.listQueryHistory(count: Int ?= 30)
+GET     /query/history/:id          controllers.Application.showQueryHistory(id: Int)
+PUT     /query/history/:id          controllers.Application.updateQueryHistory(id: Int)
 DELETE  /query/history/:id          controllers.Application.removeQueryHistory(id: Int)
 GET     /query/history/:id/executed controllers.Application.executeHistory(id: Int)
 

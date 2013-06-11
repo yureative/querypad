@@ -14,13 +14,6 @@
       margin-right: 20px;
     }
   </style>
-  <script>
-    function deleteHistory(id) {
-      jsRouter.controllers.Application.removeQueryHistory(id).ajax({
-        complete: function() { window.location = '@routes.Application.index(None)' }
-      });
-    }
-  </script>
 }{
   <div class="span8">
     <section id="querypad">
@@ -84,8 +77,14 @@
         <li class="nav-header">SQL 履歴</li>
       @histories.map { history =>
         <li>
-        <button class="close delete" type="button"
-                onclick="if (confirm('削除しますか?')) { deleteHistory(@history.id.getOrElse(0)) } ">×</button>
+          <div class="btn-group" style="float: right;">
+            <button class="btn btn-mini"
+                    onclick="showUpdateHistoryModal(@history.id.getOrElse(0), '@history.name')"
+                    ><i class="icon-edit"></i></button>
+            <button class="btn btn-mini"
+                    onclick="if (confirm('削除しますか?')) { deleteHistory(@history.id.getOrElse(0)) }"
+                    ><i class="icon-remove"></i></button>
+          </div>
           <a rel="tooltip" href="@routes.Application.index(history.id.toOption)"
                data-placement="left" data-original-title="@history.query.sql"
                >@history.updatedAt.toString("M/dd HH:mm") @history.name</a>
@@ -94,11 +93,58 @@
       </ul>
     </div><!--/.well -->
   </div><!--/span-->
-    
+  <div id="updateHistoryFormArea" class="modal hide fade">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+      <h3>履歴を更新します</h3>
+    </div>
+    <div class="modal-body">
+      <form id="updateHistoryForm">
+        <div><input name="name" type="text" class="span9"/></div>
+        <div><textarea name="sql" class="span12"></textarea></div>
+        <input type="hidden" name="id" value="1"/>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" data-dismiss="modal" aria-hidden="true">キャンセル</button>
+      <button class="btn btn-primary">更新する</button>
+    </div>
+  </div>
 } {
-  <script>
+  <script type="text/javascript">
     $(function(){
       $('a[rel=tooltip]').tooltip();
+      $('#updateHistoryFormArea .btn-primary').on('click', function(){
+        var id = $('#updateHistoryForm input[name=id]').val();
+        jsRouter.controllers.Application.updateQueryHistory(id).ajax({
+          data: {
+            name: $('#updateHistoryForm input[name=name]').val(),
+            sql:  $('#updateHistoryForm textarea[name=sql]').val()
+          },
+          success: function() { window.location = '@routes.Application.index(None)' },
+          error: function(xhr) { alert('failed to update. [' + xhr.status + ']'); }
+        });
+      });
     });
+    function showUpdateHistoryModal(id) {
+      var onSuccess = function(name, sql) {
+        $('#updateHistoryFormArea .modal-header h3').text('履歴を更新します');
+        $('#updateHistoryForm input[name=id]').val(id);
+        $('#updateHistoryForm input[name=name]').val(name);
+        $('#updateHistoryForm textarea[name=sql]').val(sql);
+        $('#updateHistoryFormArea').modal('show');
+      }
+      jsRouter.controllers.Application.showQueryHistory(id).ajax({
+        headers: {
+          Accept: "application/json; charset=utf-8"},
+        success: function(data) { onSuccess(data.name, data.sql); },
+        error: function(xhr) { alert('failed to fetch hisotry info. [' + xhr.status + ']'); }
+      });
+    }
+    function deleteHistory(id) {
+      jsRouter.controllers.Application.removeQueryHistory(id).ajax({
+        complete: function() { window.location = '@routes.Application.index(None)'; }
+      });
+    }
   </script>
 }
