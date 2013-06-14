@@ -11,6 +11,7 @@ object ApplicationBuild extends Build {
     // Add your project dependencies here,
     jdbc,
     anorm,
+    "com.jolbox" % "bonecp" % "0.8.0-rc1",
     "postgresql" % "postgresql" % "9.1-901.jdbc4"
   )
 
