@@ -91,7 +91,7 @@ object DBQuery {
   def listHistory(limit: Int): List[DBQueryHistory] = {
     DB.withConnection { implicit conn =>
       SQL(s"""SELECT * FROM $QueryHistoryTable
-        ORDER BY updated_at DESC LIMIT {limit}""")
+        ORDER BY name LIMIT {limit}""")
           .on("limit" -> limit).list(historyRowParser).toList
     }
   }
